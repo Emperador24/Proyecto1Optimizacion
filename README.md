@@ -2,7 +2,6 @@
 # Red Logística de Ayuda Humanitaria  
 ## Caso de estudio: Inundaciones en Córdoba, Colombia
 
----
 
 ## Contexto del problema
 
