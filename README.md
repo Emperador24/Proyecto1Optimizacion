@@ -86,9 +86,9 @@ A partir de la representación de la red mediante grafos, es posible estudiar c�
 ---
 
 ## Autores
-Samuel Eduardo Emperador Contreras
-Alejandra Abaunza Suárez
-Karla Mariana Martínez Cedeño
-Johann Sebastian Berrio Barreto
+- Samuel Eduardo Emperador Contreras
+- Alejandra Abaunza Suárez
+- Karla Mariana Martínez Cedeño
+- Johann Sebastian Berrio Barreto
 
 Proyecto académico desarrollado para la asignatura **Optimización y Simulación**.
