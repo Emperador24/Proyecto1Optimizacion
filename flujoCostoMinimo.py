@@ -1,100 +1,117 @@
+"""
+flujoCostoMinimo.py
+Modelo de Flujo de Costo Mínimo — Red Logística de Ayuda Humanitaria
+Distribución de 500 unidades de ayuda con mínimo 20 % al nodo 80 (zona más crítica).
+
+"""
+
 import pandas as pd
 import pulp
 
-# -----------------------------
+# ─────────────────────────────────────────
 # 1. Leer datos
-# -----------------------------
+# ─────────────────────────────────────────
 df = pd.read_csv("matriz_de_datos.csv")
 
-arcos = list(zip(df["Origen"], df["Destino"]))
+arcos       = [(int(r["Origen"]), int(r["Destino"])) for _, r in df.iterrows()]
+costos      = {(int(r["Origen"]), int(r["Destino"])): r["Costo"]     for _, r in df.iterrows()}
+capacidades = {(int(r["Origen"]), int(r["Destino"])): r["Capacidad"] for _, r in df.iterrows()}
+nodos       = set(df["Origen"].astype(int)).union(set(df["Destino"].astype(int)))
 
-costos = {(row["Origen"], row["Destino"]): row["Costo"] for _,row in df.iterrows()}
-capacidades = {(row["Origen"], row["Destino"]): row["Capacidad"] for _,row in df.iterrows()}
+origenes = [1, 2]
+destinos = [78, 79, 80]
+DEMANDA_TOTAL   = 500
+MINIMO_NODO_80  = 100    # ≥ 20 % de 500
 
-nodos = set(df["Origen"]).union(set(df["Destino"]))
+# ─────────────────────────────────────────
+# 2. Modelo PuLP
+# ─────────────────────────────────────────
+modelo = pulp.LpProblem("Flujo_Costo_Minimo", pulp.LpMinimize)
 
-# -----------------------------
-# 2. Crear modelo
-# -----------------------------
-model = pulp.LpProblem("Flujo_Costo_Minimo", pulp.LpMinimize)
+x = pulp.LpVariable.dicts("flujo", arcos, lowBound=0)
 
-# -----------------------------
-# 3. Variables de flujo
-# -----------------------------
-x = pulp.LpVariable.dicts(
-    "flujo",
-    arcos,
-    lowBound=0
-)
+# ─────────────────────────────────────────
+# 3. Función objetivo
+# ─────────────────────────────────────────
+modelo += pulp.lpSum(costos[i, j] * x[i, j] for (i, j) in arcos), "Costo_Total"
 
-# -----------------------------
-# 4. Función objetivo
-# -----------------------------
-model += pulp.lpSum(
-    costos[i,j] * x[i,j]
-    for (i,j) in arcos
-)
+# ─────────────────────────────────────────
+# 4. Restricciones de capacidad
+# ─────────────────────────────────────────
+for (i, j) in arcos:
+    modelo += x[i, j] <= capacidades[i, j], f"Cap_{i}_{j}"
 
-# -----------------------------
-# 5. Restricción de capacidad
-# -----------------------------
-for (i,j) in arcos:
-    model += x[i,j] <= capacidades[i,j]
+# ─────────────────────────────────────────
+# 5. Oferta en orígenes
+# ─────────────────────────────────────────
+for o in origenes:
+    salida_o = pulp.lpSum(x[i, j] for (i, j) in arcos if i == o)
+    modelo += salida_o <= DEMANDA_TOTAL, f"Oferta_{o}"
 
-# -----------------------------
-# 6. Balance de flujo
-# -----------------------------
-
-origenes = [1,2]
-destinos = [78,79,80]
-
-oferta_total = 500
-
-# Orígenes
-model += pulp.lpSum(x[1,j] for (i,j) in arcos if i==1) <= oferta_total
-model += pulp.lpSum(x[2,j] for (i,j) in arcos if i==2) <= oferta_total
-
-# Nodos intermedios
+# ─────────────────────────────────────────
+# 6. Conservación de flujo (nodos intermedios)
+# ─────────────────────────────────────────
 for n in nodos:
-    if n not in origenes and n not in destinos:
+    if n in origenes or n in destinos:
+        continue
+    entrada = pulp.lpSum(x[i, j] for (i, j) in arcos if j == n)
+    salida  = pulp.lpSum(x[i, j] for (i, j) in arcos if i == n)
+    modelo += entrada == salida, f"Conservacion_{n}"
 
-        entrada = pulp.lpSum(x[i,j] for (i,j) in arcos if j==n)
-        salida = pulp.lpSum(x[i,j] for (i,j) in arcos if i==n)
-
-        model += entrada == salida
-
-# -----------------------------
-# 7. Flujo total a destinos
-# -----------------------------
-flujo_destinos = pulp.lpSum(
-    x[i,j] for (i,j) in arcos if j in destinos
+# ─────────────────────────────────────────
+# 7. Demanda total en destinos
+# ─────────────────────────────────────────
+modelo += (
+    pulp.lpSum(x[i, j] for (i, j) in arcos if j in destinos) == DEMANDA_TOTAL,
+    "Demanda_Total"
 )
 
-model += flujo_destinos == 500
-
-# -----------------------------
-# 8. 20% mínimo al nodo 80
-# -----------------------------
-flujo_80 = pulp.lpSum(
-    x[i,j] for (i,j) in arcos if j==80
+# ─────────────────────────────────────────
+# 8. Mínimo 20 % al nodo 80
+# ─────────────────────────────────────────
+modelo += (
+    pulp.lpSum(x[i, j] for (i, j) in arcos if j == 80) >= MINIMO_NODO_80,
+    "Minimo_Nodo80"
 )
 
-model += flujo_80 >= 100
+# ─────────────────────────────────────────
+# 9. Resolver
+# ─────────────────────────────────────────
+modelo.solve(pulp.PULP_CBC_CMD(msg=0))
 
-# -----------------------------
-# 9. Resolver modelo
-# -----------------------------
-model.solve()
-
-print("Estado:", pulp.LpStatus[model.status])
-
-# -----------------------------
+# ─────────────────────────────────────────
 # 10. Resultados
-# -----------------------------
-print("\nFlujos utilizados:\n")
+# ─────────────────────────────────────────
+estado = pulp.LpStatus[modelo.status]
+costo_total = pulp.value(modelo.objective)
 
-for (i,j) in arcos:
-    if x[i,j].value() > 0:
-        print(f"{i} -> {j} : {x[i,j].value()}")
+print("=" * 60)
+print("  FLUJO DE COSTO MÍNIMO — RESULTADOS")
+print("=" * 60)
+print(f"  Estado         : {estado}")
+print(f"  Costo total    : {costo_total:,.0f}")
+print(f"  Demanda total  : {DEMANDA_TOTAL} unidades")
+print(f"  Mínimo nodo 80 : {MINIMO_NODO_80} unidades (20 %)")
+print("=" * 60)
 
-print("\nCosto total:", pulp.value(model.objective))
+print("\n  Flujos activos (x_ij > 0):\n")
+print(f"  {'Origen':>7}  {'Destino':>8}  {'Flujo':>8}  {'Costo_unit':>12}  {'Costo_parcial':>14}")
+print("  " + "-" * 58)
+
+flujos_activos = [(i, j, x[i, j].value()) for (i, j) in arcos if (x[i, j].value() or 0) > 1e-6]
+flujos_activos.sort(key=lambda t: t[2], reverse=True)
+
+for i, j, f in flujos_activos:
+    costo_p = costos[i, j] * f
+    print(f"  {i:>7} -> {j:>7}   {f:>8.1f}   {costos[i,j]:>12.1f}   {costo_p:>14.1f}")
+
+print("\n  Resumen por nodo destino:\n")
+for d in destinos:
+    recibido = sum((x[i, j].value() or 0) for (i, j) in arcos if j == d)
+    pct = 100 * recibido / DEMANDA_TOTAL
+    print(f"    Nodo {d:>3}: {recibido:>7.1f} unidades  ({pct:.1f} %)")
+
+print("\n  Despacho desde orígenes:\n")
+for o in origenes:
+    enviado = sum((x[i, j].value() or 0) for (i, j) in arcos if i == o)
+    print(f"    Nodo {o:>3}: {enviado:>7.1f} unidades enviadas")
