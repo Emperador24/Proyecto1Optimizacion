@@ -87,7 +87,7 @@ A partir de la representación de la red mediante grafos, es posible estudiar c�
 
 ## Modelos implementados
 
-El proyecto incluye dos enfoques de optimización sobre la red:
+El proyecto incluye tres enfoques de optimización sobre la red:
 
 - **Flujo de costo mínimo** (`flujoCostoMinimo.py`):
 	minimiza el costo total de transporte sujeto a capacidades, conservación de flujo y una demanda total de ayuda.
@@ -97,6 +97,9 @@ El proyecto incluye dos enfoques de optimización sobre la red:
 	Además, permite imponer una demanda mínima por destino (por ejemplo, un mínimo para el nodo 80).
 
 Para el modelo de flujo máximo se utiliza programación lineal con `PuLP`, lo que facilita incorporar restricciones operativas adicionales como cuotas mínimas por destino.
+
+- **Ruta más corta** (`rutaMasCorta.py`):
+	encuentra la ruta de menor distancia desde los nodos origen hacia los nodos destino usando el algoritmo de Dijkstra, considerando la red del archivo CSV y comparando las rutas obtenidas para identificar el mejor origen y camino hacia cada destino.
 
 ---
 
