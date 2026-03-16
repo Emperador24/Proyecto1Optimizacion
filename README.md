@@ -85,6 +85,21 @@ A partir de la representación de la red mediante grafos, es posible estudiar c�
 
 ---
 
+## Modelos implementados
+
+El proyecto incluye dos enfoques de optimización sobre la red:
+
+- **Flujo de costo mínimo** (`flujoCostoMinimo.py`):
+	minimiza el costo total de transporte sujeto a capacidades, conservación de flujo y una demanda total de ayuda.
+
+- **Flujo máximo** (`flujoMaximo.py`):
+	maximiza la cantidad total de ayuda enviada desde los centros de abastecimiento (nodos 1 y 2) hacia las zonas afectadas (nodos 78, 79 y 80), respetando las capacidades de cada ruta.
+	Además, permite imponer una demanda mínima por destino (por ejemplo, un mínimo para el nodo 80).
+
+Para el modelo de flujo máximo se utiliza programación lineal con `PuLP`, lo que facilita incorporar restricciones operativas adicionales como cuotas mínimas por destino.
+
+---
+
 ## Autores
 - Samuel Eduardo Emperador Contreras
 - Alejandra Abaunza Suárez
